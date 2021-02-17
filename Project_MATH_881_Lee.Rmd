@@ -1,0 +1,661 @@
+---
+geometry: margin=1in
+fontsize: 12pt
+documentclass: report
+output: 
+  pdf_document: 
+      fig_caption: yes
+      citation_package: natbib
+      highlight: tango
+bibliography: lazbibreg.bib
+biblio-style: jabes
+subparagraph: yes
+header-includes:
+  
+  \usepackage{mdwlist}
+  \usepackage[compact]{titlesec}
+  \usepackage{titling}
+  \usepackage[font=small,labelfont=bf,tableposition=top]{caption}
+  \usepackage{float}
+  \floatstyle{plaintop}
+ \restylefloat{table}
+  \usepackage{lastpage} 
+  \usepackage{hyperref}
+  \usepackage{colortbl}
+  \usepackage{array}
+  \hypersetup{backref,colorlinks=true}
+  \usepackage{framed,color}
+  \definecolor{shadecolor}{rgb}{0.95, 0.92, 0.88}
+  \usepackage{graphicx}
+  \usepackage{booktabs}
+  \usepackage{fancyhdr}
+  \usepackage[none]{hyphenat}
+  \raggedright
+  \usepackage{amsmath, amsthm, amssymb, bm}
+  \usepackage{marginnote}
+  \usepackage{subfig}
+  \def\mygraphcaption{Here are my graphs.}
+  \newlength{\mygraphwidth}\setlength{\mygraphwidth}{0.9\textwidth}
+  \usepackage{listings}
+---
+  \lstset{
+	basicstyle=\small\ttfamily,
+	columns=flexible,
+	breaklines=true}
+	
+  \pagestyle{fancy}
+  \fancyhead[L]{\textbf{Xiaowen(Lee) Li}}
+  \fancyhead[C]{}
+  \fancyhead[R]{\textbf{MATH 881 Project}}
+  \fancyfoot[L]{}
+  \fancyfoot[C]{}
+  \fancyfoot[R]{Page -\thepage- of \pageref{LastPage}}
+  \fancypagestyle{plain}{\pagestyle{fancy}}
+  \renewcommand{\headrulewidth}{2pt}
+  \renewcommand{\footrulewidth}{2pt}
+ 
+ \hypersetup{
+	colorlinks   = true,
+	citecolor    = blue,
+	linkcolor    = black,
+	urlcolor     = blue
+  }
+  
+  \begin{titlepage}
+   \begin{center}
+       \vspace*{2cm}
+        
+       \vspace{0.5cm}
+ 
+       \textbf{\textit{\LARGE  Randomized Kaczmarz Algorithm}}
+ 
+       \vspace{0.5cm}
+      
+       \textbf{\Large Math 881: Fall Class Project, 2020} 
+       
+        \vspace{0.5cm}
+        
+        \textbf{\large Xiaowen(Lee) Li}
+        
+       \vfill
+ 
+       \vspace{0.7cm}
+ 
+       \includegraphics[width=0.4\textwidth]{figures/ku}
+ 
+       \large Department of Mathematics \\
+       University of Kansas, USA \\
+       `r format(Sys.time(), '%B %e, %Y')`
+ 
+   \end{center}
+\end{titlepage}
+  
+```{r setup, include=FALSE}
+# load packages
+library(knitr)
+library(formatR)
+library(stargazer)
+library(xtable)
+library(png)
+library(R.matlab)
+knitr::opts_chunk$set(echo = TRUE)
+options(digits = 5, width = 60, xtable.comment = FALSE)
+opts_chunk$set(tidy.opts = list(width.cutoff=60), tidy=TRUE)
+out_type <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+```
+
+ \setlength{\headheight}{45pt}
+ 
+\thispagestyle{empty}
+\newpage
+\pagenumbering{roman}
+\setcounter{page}{1}
+\pagestyle{plain}
+\tableofcontents
+\cleardoublepage
+\phantomsection
+\listoffigures
+\phantomsection
+\listoftables
+\newpage
+\pagenumbering{arabic}
+
+\section{Abstract}
+
+\subsection{Introduction}
+This report provides experiments about the performance of Randomized Kaczmarz's method that is introduced in the paper  \citet{strohmer2009randomized} [: A randomized Kaczmarz algorithm with
+exponential convergence](https://www.math.ucdavis.edu/~strohmer/papers/2007/kaczmarz.pdf) compares to Classical Randomized Kaczmarz's method and Simple Randomized Kaczmarz's method. 
+
+\subsection{Experiments} 
+This report contains following experiments: first, the rate of connvergence among all three versions of Kaczmarz's methods with input ramdomly draw from a nonuniform sampling distribution; Then repeating this experiment 100 times and analysising the least squares errors with fixed number of iterations as well as number of iterations with fixed degree of accuracy. 
+
+\subsection{Conclusion}
+The Randomized Kaczmarz’s method significantly outperforms the other Kaczmarz methods in all experiments which meets the result from the paper \citet{strohmer2009randomized}.
+
+\newpage
+
+\section{Introduction}
+
+\subsection{Classical Kaczmarz's Method}
+
+Kaczmarz's method \citet{kaczmarz1937angenaherte} is one of the most popular algorithm in solving the system of equations \[Ax = b,\] where \(A\)  is a full rank \(m\times n\) matrix with \(m\geq n\), and \(b\in \mathbb{C}^{m}\). 
+
+To denote the rows of \(A\) by \(a_1^{*},...,a_m^{*}\) and let \(b = (b_1,...,b_m)^{T}\), The classical kaczmarz method picks the row of \(A\) in a cylic manner. The algorithm takes the form
+\[x_{k+1} = x_k + \frac{b_i - <a_i,x_k>}{\|{a_i}\|_2^2}*a_i,\]
+where \(i = k\) mod \(m+1\).
+
+The theoretical estimates of the rate of converge of Kaczmarz's method are difficult to obtain for any matrix \(A\) with \(m>2\). All known estimates for certain examples are based on quantities of the matrix \(A\) which make the rate of convergence hard to compute and difficult to make comparision with convergence properties of other iterative methods. 
+
+\subsection{Simple Randomized Kaczmarz's Method}
+
+To apply the idea from randomized algorithms to Classical Kaczmarz's method, Simple randomized Kaczmarz's Method use the rows of A in Kaczmarz's Method in random order, rather than in their given order.
+This algorithm takes the form 
+\[x_{k+1} = x_k + \frac{b_{s(i)} - <a_{s(i)},x_k>}{\|{a_{s(i)}}\|_2^2}*a_{s(i)},\]
+where \(s(i)\) is choosen from the set \(\{1,2,...,m\}\) at random.
+
+No guarantees of its rate of convergence have been known.
+
+\subsection{Randomized Kaczmarz's Method}
+
+In the paper \citet{strohmer2009randomized}, authors proposed a new version of Randomized Kaczmarz's method, which picks the rows of matrix \(A\) randomly with probability proportional to the square of its Euclidean norm. This algorithm takes the form 
+\[x_{k+1} = x_k + \frac{b_{r(i)} - <a_{r(i)},x_k>}{\|{a_{r(i)}}\|_2^2}*a_{r(i)},\]
+where \(r(i)\) is choosen from the set \(\{1,2,...,m\}\) at random with probability proportional to \(\|a_{r(i)}\|_2^2\).
+
+And this randomized version of Kaczmarz's method can be proved with exponential expected rate of converegence. 
+
+\subsubsection{Ideas behind choosing the probabilities according to the row-norms}
+
+\begin{itemize}
+\item Choosing the probabilities according to the row-norms is related to the idea of preconditioning a matrix by row-scaling. 
+\item From the viewpoint of preconditioning, it is clear that other methods of choosing a diagonal preconditioner will in general perform better. 
+\item However, finding the optimal diagonal preconditioner for the system Ax = b can be very expensive while inverting the entire matrix A when A is large in size.
+\item Therefore, a cheaper, suboptimal alternative is needed. Scaling by the inverses of the squared row norms has been shown to be an efficient means to balance computational costs with optimality.
+\end{itemize}
+
+
+\section{Theoretical Approach}
+
+\subsection{Rate of convergence for Randomized Kazmarz Algorithm}
+
+Consider the linear system of equations \(Ax = b\), where \(A\) is a full rank \(m\times n\) matrix with \(m\geq n\), and \(b\in \mathbb{C}^{m}\).Let \(x\) be its solution.
+Then Randomized Kazcmarz Algorithm converges to x in expectation, with the average error
+\[\mathbb{E}\|x_k-x\|_2^2\leq(1-\kappa(A)^{-2})^k\cdot \|x_0-x\|_2^2\]
+for all \(k = 1,2,...\)
+Where \(\kappa(A)\) is the scaled conditional number \citet{demmel1988probability} of matrix \(A\) that is defined as \(\| A \|_F \cdot \| A^{-1} \|_2\). 
+
+
+\subsection{Optimality for Randomized Kazmarz Algorithm}
+
+\subsubsection{General Lower Estimate}
+Consider the same kind of linear system of equations as defined above, then there exists an initial approximation \(x_0\) such that
+\[\mathbb{E}\|x_k-x\|_2^2\geq(1-\frac{2k}{\kappa(A)^2})\cdot \|x_0-x\|_2^2\]
+for all \(k = 1,2,...\)
+
+\subsubsection{The Upper Estimate is Attained}
+If \(\kappa(A) = \sqrt{n}\), then \[\mathbb{E}\|x_k-x\|_2^2=(1-\kappa(A)^{-2})^k\cdot \|x_0-x\|_2^2\]
+
+\subsection{Discussion} 
+
+From the above theoretical approaches, there are several advantages and disadvantages for Randomized Kaczmarz Method.
+
+\subsubsection{PROS}
+\begin{itemize}
+\item The rate of convergence is expressible in terms of standard quantities in numerical analysis and does not depend on the number of equations in the linear system.
+\item In terms of accuracy, the average error has an upper bound. 
+\end{itemize}
+
+\subsubsection{CONS}
+\begin{itemize}
+\item As stated above, the estimate cannot be improved beyond a constant factor.
+\item In terms of computational cost, the cost for computing all row norms of matrix \(A\) is \(m\times n\) operations.
+\end{itemize}
+
+\section{Numerical Experiments} 
+
+\subsection{Input}
+In order to show Randomized Kaczmarz Algorithm is efficient in general matrices. The experiment picked input randomly by a nonuniform sampling distribution.
+In this model, the problem has be formulated as follows:
+Define \[f(t) = \sum_{l = -r}^{r} x_le^{2\pi ilt},\]
+where \(x = \{x_l\}_{l=-r}^{r}\in \mathbb{C} ^{2r+1}.\)\citet{grochenig1999irregular}
+
+Take nodes \(\{t_k\}_{k=1}^m\) to be non-uniformly spaced by generating the sampling points \(t_j\) randomly between \([0,1]\) and then sort them from smallest to largest. 
+We arrive at the linear system of equations:\[ Ax = b,\] 
+where \(A_{j,k} = \sqrt{w_j}e^{2\pi ilt_j},  b_j = \sqrt{w_j}f(t_j),  w_j=\frac{t_{j+1}-t_{j-1}}{2},\) 
+
+with \(j = 1,...m; k = -r,...,r; n = 2r+1.\)
+
+In the experiment, it takes \(r = 50, m = 700\), which makes \(A\) a \(700\times 101\) matrix.
+
+\subsection{Experiment 1}
+
+This experiment applies the Classical Kaczmarz's Method, the Simple Randomized Kaczmarz's Method, and the Randomized Kaczmarz's Method and plots the least squares error \(\|x-x_k\|_2\) versus the number of
+projections (max iterations = 15000)s, cf. Figure 1.
+```{r figure1, echo=FALSE, include=TRUE, message=FALSE, fig.cap="Comparison of rate of convergence for 3 methods", fig.pos="H", fig.align='center', out.width="0.6\\linewidth"}
+img1_path <- "images/1.png"
+include_graphics(img1_path)
+```
+\subsubsection{Observation}
+Figure 1 clearly shows that the Randomized Kaczmarz Algorithm converges much faster than the orther methods. It also generates smaller error than orther methods.
+
+\subsection{Experiment 2}
+This experiment applies all 3 methods with the described random input matrix \(A\). Each method is terminated after reaching 5000 iterations. After repeating this experiment 100 times, the following histogram shows the least square error \(\|x-x_{5000}\|_2\) for every method.
+
+```{r figure2, echo=FALSE, include=TRUE, message=FALSE, fig.cap="Error for 3 methods with fixed 5000 iterations in 100 runs", fig.pos="H", fig.align='center', out.width="0.6\\linewidth"}
+img2_path <- "images/2.png"
+include_graphics(img2_path)
+```
+
+In figure 2, there is a big gap between errors generated by the Classical Kaczmarz's Method and the orther two randomized versions of Kaczmarz's method. 
+I also came up with Figure 3 which shows the comparison within only two randomized versions of Kaczmarz's method.
+
+```{r figure3, echo=FALSE, include=TRUE, message=FALSE, fig.cap="Error for 2 methods with fixed 5000 iterations in 100 runs", fig.pos="H", fig.align='center', out.width="0.6\\linewidth"}
+img3_path <- "images/3.png"
+include_graphics(img3_path)
+```
+
+The statistical summary for above data is given below:
+
+```{r tab1,  echo=FALSE, results="asis", message=FALSE,  tidy.opts = list(width.cutoff=30)}
+errorc <- readMat("data/errorc.mat")
+errors <- readMat("data/errors.mat")
+errorr <- readMat("data/errorr.mat")
+c_name <- "Classical"
+s_name <- "Simple Randomized"
+r_name <- "Randomized"
+
+df <- data.frame(t(errorc$error.c),t(errors$error.s),t(errorr$error.r))
+names(df) <- c(c_name,s_name,r_name)
+
+kable(summary(df),caption = "Least squares error for 3 methods with fixed 5000 iterations")
+```
+
+
+\subsubsection{Observation}
+
+From figure 2 and 3, we can tell that while the errors by Classical Kaczmarz's method is widely spreading between 0.5 to 1.5, even the errors by Simple Randomized Kaczmarz Algorithm is spreading bwtween 0 to 1.2e-2, the errors by the Randomized Kaczmarz Algorithm is squeezed close to 0. 
+
+Table 1 also shows how close the errors are for Randomized Kaczmarz Algorithm, with min to be 0 (this cannot be more accurate due to the limit of precision can be computed by MatLab), and the max to be as small as 2.42e-04 and a mean at 7.13e-06 which is 1e-02 more accurate than Simple Randomized Kaczmarz Algorithm and 1e-05 more accurate than Classical Kaczmarz Algorithm.
+
+\subsection{Experiment 3}
+This experiment applies all 3 methods with the described random input matrix \(A\). Each method is terminated after reaching the required accuracy \(\varepsilon = 10^{-4}\). After repeating this experiment 100 times, the following histogram shows the number of iterations until terminating for every method.
+
+```{r figure4, echo=FALSE, include=TRUE, message=FALSE, fig.cap="Number of iterations for 3 methods with fixed tolerrance in 100 runs", fig.pos="H", fig.align='center', out.width="0.6\\linewidth"}
+img4_path <- "images/4.png"
+include_graphics(img4_path)
+```
+
+The statistical summary for above data is given below:
+```{r tab2,  echo=FALSE, results="asis", message=FALSE,  tidy.opts = list(width.cutoff=30)}
+iterc <- readMat("data/iterc.mat")
+iters <- readMat("data/iters.mat")
+iterr <- readMat("data/iterr.mat")
+c_name <- "Classical"
+s_name <- "Simple Randomized"
+r_name <- "Randomized"
+
+dff <- data.frame(t(iterc$iter.c),t(iters$iter.s),t(iterr$iter.r))
+names(dff) <- c(c_name,s_name,r_name)
+
+kable(summary(dff),caption = "Number of iterations for 3 methods with fixed tolerrance")
+```
+
+\subsubsection{Observation}
+
+Figure 4 shows that the number of iterations required for Randomized Kaczmarz Algorithm to reach the tolerrance is less than the Simple Randomized Kaczmarz Algorithm and much less than the Classical Kaczmarz Algorithm.
+
+Table 2 also provide the same observation: Randomized Kaczmarz Algorithm has a mean value of iterations at 2906 while Simple Randomized Kaczmarz Algorithm's has it at 3926 and the Classical Kaczmarz Algorithm has it at 37509.
+
+\section{Conclusion}
+The Randomized Kaczmarz Algorithm significantly outperforms the other Kaczmarz methods both in the rate of convergence and the opration cost, demonstrating not only the power of choosing the projections at random but also the importance of choosing the projections according to their relevance. 
+\section{Future Work}
+\begin{itemize}
+\item We have shown that the Randomized Kaczmarz Algorithm is a very efficient way to work with general full rank matrices. But with some specifically determined matrices, there are known specific numerical methods to solve them, and it will be interesting to compare the performance of the Randomized Kaczmarz Algorithm with those methods with carefully structured inputs.
+\item  All the theoretical analysis from the paper \citet{strohmer2009randomized} and the experiments we did in this report assume the consistency of the system of equations - with some appropriate underrelaxation, it will be interesting to see if the Randomized Kaczmarz Algorithm can also do a great job in solving inconsistent systems.
+\end{itemize}
+
+
+\newpage
+
+\section{Appendix: MatLab-code}
+
+\subsection{Classical Kaczmarz Function}
+\begin{lstlisting}
+
+function [x,iter,error] = kaczmarz(A, b, x0,maxit,tol,exactx)
+% classical kaczmarz
+%
+% Ax = b
+% A - input matrix
+% b - right vector
+% x0 - initial x
+%
+% x - the approximated x
+% iter - number of iterations before convergence (= maxit if maxit is given)
+% error - the norm of difference in x and exact solution after every
+% iteration
+
+m = size(A,1);
+n = size(A,2);
+
+x = x0;
+error = [];
+
+if isempty(tol)
+    iter = maxit;
+    for i=1:maxit
+       pickedi = mod(i,m)+1;
+       row = A(pickedi, :);
+       x = x + ( b(pickedi) - (row * x) ) / (row * row') * row';
+       e = norm(x-exactx);
+       error = [error,e];
+    end
+else
+    iter = 1;
+    e = 1;
+    while e >= tol
+       pickedi = mod(iter,m)+1;
+       row = A(pickedi, :);
+       x = x + ( b(pickedi) - (row * x) ) / (row * row') * row';
+       e = norm(x-exactx);
+       error = [error,e];
+       iter = iter+1;
+    end
+end
+end
+
+\end{lstlisting}
+\subsection{Simple Randomized Kaczmarz Function}
+\begin{lstlisting}
+
+function [x,iter,error] = randkaczmarz(A, b, x0,maxit,tol,exactx)
+% randomized kaczmarz by Algorithm 1
+% Ax = b
+% A - input matrix
+% b - right vector
+% x0 - initial x
+%
+% x - the approximated x
+% iter - number of iterations before convergence (= maxit if maxit is given)
+% error - the norm of difference in x and exact solution after every
+% iteration
+m = size(A,1);
+n = size(A,2);
+
+x = x0;
+%iter = 0;
+error = [];
+e = 1;
+
+normrow = [];
+index = [];
+%compute norm per row also store the corresponding index
+
+  for i = 1:m
+    normrow = [normrow,norm(A(i,:))];
+    index = [index,i];
+  end
+  
+  weight = normrow/sum(normrow);
+if isempty(tol)
+  iter = maxit;   
+  for i = 1:maxit
+    %randsample to generate weighted random number from given vector
+    pickedi = randsample(index,1,true,weight);
+    
+    row = A(pickedi, :);
+    x = x + ( b(pickedi) - (row * x) ) / (row * row') * row';
+    e = norm(x-exactx);
+    error = [error,e];
+    %iter = iter+1;
+  end
+else
+    iter = 1;
+    e = 1;
+    while e >= tol  
+    %randsample to generate weighted random number from given vector
+    pickedi = randsample(index,1,true,weight);
+    
+    row = A(pickedi, :);
+    x = x + ( b(pickedi) - (row * x) ) / (row * row') * row';
+    e = norm(x-exactx);
+    error = [error,e];
+    iter = iter+1;
+    end
+end
+end
+
+\end{lstlisting}
+\subsection{Randomized Kaczmarz Function}
+\begin{lstlisting}
+
+function [x,iter,error] = simplerandkaczmarz(A, b, x0,maxit,tol,exactx)
+% simplerandomized kaczmarz mentioned by fig 1
+% Ax = b
+% A - input matrix
+% b - right vector
+% x0 - initial x
+%
+% x - the approximated x
+% iter - number of iterations before convergence (= maxit if maxit is given)
+% error - the norm of difference in x and exact solution after every
+% iteration
+m = size(A,1);
+n = size(A,2);
+
+x = x0;
+%iter = 0;
+error = [];
+e = 1;
+
+if isempty(tol)
+  iter = maxit;   
+  for i = 1:maxit
+    %randsample to generate weighted random number from given vector
+    pickedi = randi(m);
+    
+    row = A(pickedi, :);
+    x = x + ( b(pickedi) - (row * x) ) / (row * row') * row';
+    e = norm(x-exactx);
+    error = [error,e];
+    %iter = iter+1;
+  end
+else
+    iter = 1;
+    e = 1;
+    while e >= tol 
+        pickedi = randi(m);
+    
+    row = A(pickedi, :);
+    x = x + ( b(pickedi) - (row * x) ) / (row * row') * row';
+    e = norm(x-exactx);
+    error = [error,e];
+    iter = iter+1;
+    end
+end
+end
+
+\end{lstlisting}
+\subsection{Input Function}
+\begin{lstlisting}
+
+function [classical_iter_or_error,simple_iter_or_error,rand_iter_or_error] = Input(iter,tol)
+%% set the dimention
+r = 50;
+m = 700;
+n = 2*r+1;
+
+%% generate nodes
+%tj are drawing randomly from a uniform distribution in [0,1]
+t = rand(m,1);
+
+%then ordering by magnitude (since they are all positive, just sort)
+t = sort(t);
+% just to assign the size
+w = zeros(m,1); 
+x = zeros(n,1);
+%% generate x 
+realx = randn(n,1);
+imgx = randn(n,1);
+for l = 1:n
+   x(l) = realx(l)+1i*imgx(l);
+end  
+%% generate A and b
+A = zeros(m,n);
+for j = 1:m
+    % dealing with special cases when reach the endpoints(nodes)
+    if j == 1
+        w(j) = (t(2)-t(end)-1)/2;
+    elseif j == m
+            w(j) = (t(1)+1-t(m-1))/2;
+        else
+            w(j) = (t(j+1)-t(j-1))/2;
+    end              
+    for k = -r:r
+       A(j,k+r+1) =sqrt(w(j))*exp(2*pi*1i*k*t(j));
+    end
+end  
+b = A*x;
+x0 = zeros(n,1);
+
+[x1,iter1,error1] = kaczmarz(A,b,x0,iter,tol,x);
+[x2,iter2,error2] = simplerandkaczmarz(A,b,x0,iter,tol,x);
+[x3,iter3,error3] = randkaczmarz(A,b,x0,iter,tol,x);
+if isempty(tol)
+    classical_iter_or_error = error1;
+    simple_iter_or_error = error2;
+    rand_iter_or_error = error3;
+else
+    classical_iter_or_error = iter1;
+    simple_iter_or_error = iter2;
+    rand_iter_or_error = iter3; 
+end
+
+\end{lstlisting}
+\subsection{Driver}
+\begin{lstlisting}
+
+%% experiment 1 (presentation) comparing rate of convergence among 3 versions with 
+%maxit = 15000 
+%(same experiment as from the original paper)
+[error1,error2,error3] = Input(15000,[]);
+
+figure (1)
+semilogy(1:maxit,error1,'k--');
+title('comparing rate of convergence among 3 versions with maxit = 15000')
+ylabel('Least squares error') 
+xlabel('Number of iterations') 
+hold on
+semilogy(1:maxit,error2,'b--');
+semilogy(1:maxit,error3,'r--');
+hold off
+legend('classical kaczmarz','simple randomized kaczmarz','randomized kaczmarz')
+%% experiment 2 (report) Running 100 times with random input and maxit = 5000 
+%- statistical analysis
+error_c = [];
+error_s = [];
+error_r = [];
+for n = 1:100
+    [error1,error2,error3] = Input(5000,[]);
+    error_c = [error_c,error1(5000)];
+    error_s = [error_s,error2(5000)];
+    error_r = [error_r,error3(5000)];
+end
+% histogram
+figure (2)
+title('errors')
+h3 = histogram(error_c);
+hold on
+h4 = histogram(error_s);
+h5 = histogram(error_r);
+hold off
+legend('classical kaczmarz','simple randomized kaczmarz','randomized kaczmarz')
+
+
+figure (3)
+title('errors')
+h1 = histogram(error_s);
+hold on
+h2 = histogram(error_r);
+hold off
+legend('simple randomized kaczmarz','randomized kaczmarz')
+
+%% experiment 3 (report) Running 100 times with random input and tol = 10^(-4) 
+%- statistical analysis
+iter_c = [];
+iter_s = [];
+iter_r = [];
+for n = 1:100
+    [iter1,iter2,iter3] = Input([],0.0001);
+    iter_c = [iter_c,iter1];
+    iter_s = [iter_s,iter2];
+    iter_r = [iter_r,iter3];
+end  
+% histogram
+figure (4)
+title('iterations')
+h3 = histogram(iter_c);
+hold on
+h4 = histogram(iter_s);
+h5 = histogram(iter_r);
+hold off
+legend('classical kaczmarz','simple randomized kaczmarz','randomized kaczmarz')
+figure (5)
+title('iterations')
+h1 = histogram(iter_s);
+hold on
+h2 = histogram(iter_r);
+hold off
+legend('simple randomized kaczmarz','randomized kaczmarz')
+
+\end{lstlisting}
+
+\newpage
+
+\section{Appendix: R-code}
+\begin{lstlisting}
+library(knitr)
+library(formatR)
+library(stargazer)
+library(xtable)
+library(png)
+library(R.matlab)
+knitr::opts_chunk$set(echo = TRUE)
+options(digits = 5, width = 60, xtable.comment = FALSE)
+opts_chunk$set(tidy.opts = list(width.cutoff=60), tidy=TRUE)
+out_type <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+#Figure 1
+img1_path <- "images/1.png"
+include_graphics(img1_path)
+#Figure 2
+img2_path <- "images/2.png"
+include_graphics(img2_path)
+#Figure 3
+img3_path <- "images/3.png"
+include_graphics(img3_path)
+#Figure 4
+img4_path <- "images/4.png"
+include_graphics(img4_path)
+#Table 1
+errorc <- readMat("data/errorc.mat")
+errors <- readMat("data/errors.mat")
+errorr<- readMat("data/errorr.mat")
+c_name <- "Classical"
+s_name <- "Simple Randomized"
+r_name <- "Randomized"
+
+df <- data.frame(t(errorc$error.c),t(errors$error.s),t(errorr$error.r))
+names(df) <- c(c_name,s_name,r_name)
+kable(summary(df),caption = "Least squares error for 3 methods")
+#Table 2
+iterc <- readMat("data/iterc.mat")
+iters <- readMat("data/iters.mat")
+iterr <- readMat("data/iterr.mat")
+c_name <- "Classical"
+s_name <- "Simple Randomized"
+r_name <- "Randomized"
+
+dff <- data.frame(t(iterc$iter.c),t(iters$iter.s),t(iterr$iter.r))
+names(dff) <- c(c_name,s_name,r_name)
+
+kable(summary(dff),caption = "Number of iterations for 3 methods with fixed tolerrance")
+\end{lstlisting}
